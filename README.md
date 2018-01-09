@@ -12,6 +12,7 @@ Set the src/main/resources/sample-config.yml to look like this
     botEmailAddress: bot.user@example.com
     agentAPIEndpoint: https://your-agent.symphony.com/agent
     podAPIEndpoint: https://your-pod.symphony.com/pod
+    userEmailAddress: your-email@company.com
 
 Run BotMainApp.java
 
