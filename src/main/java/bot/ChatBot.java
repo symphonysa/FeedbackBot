@@ -5,9 +5,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.symphonyoss.client.SymphonyClient;
 import org.symphonyoss.client.exceptions.MessagesException;
+import org.symphonyoss.client.exceptions.UsersClientException;
 import org.symphonyoss.client.model.Chat;
 import org.symphonyoss.client.services.*;
 import org.symphonyoss.symphony.clients.model.SymMessage;
+import org.symphonyoss.symphony.clients.model.SymUser;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class ChatBot implements ChatListener, ChatServiceListener {
 
@@ -36,6 +41,23 @@ public class ChatBot implements ChatListener, ChatServiceListener {
 
 
         symClient.getChatService().addListener(this);
+
+        Chat chat = new Chat();
+        chat.setLocalUser(symClient.getLocalUser());
+        Set<SymUser> recipients = new HashSet<>();
+        try {
+            SymUser recipient = symClient.getUsersClient().getUserFromEmail(config.getUserEmailAddress());
+            recipients.add(recipient);
+            chat.setRemoteUsers(recipients);
+            symClient.getChatService().addChat(chat);
+            SymMessage reporterMessage = new SymMessage();
+            reporterMessage.setMessageText("Test message");
+            symClient.getMessagesClient().sendMessage(chat.getStream(), reporterMessage);
+        } catch (UsersClientException e) {
+            logger.error("Failed to find user", e);
+        }catch (MessagesException e) {
+            logger.error("Failed to send message", e);
+        }
 
     }
 

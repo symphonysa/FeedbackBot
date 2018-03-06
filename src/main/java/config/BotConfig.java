@@ -24,6 +24,35 @@ public class BotConfig {
 
     private String podAPIEndpoint;
 
+    private String proxyURL;
+
+    private String proxyUsername;
+
+    private String proxyPassword;
+
+    public String getProxyURL() {
+        return proxyURL;
+    }
+
+    public void setProxyURL(String proxyURL) {
+        this.proxyURL = proxyURL;
+    }
+
+    public String getProxyUsername() {
+        return proxyUsername;
+    }
+
+    public void setProxyUsername(String proxyUsername) {
+        this.proxyUsername = proxyUsername;
+    }
+
+    public String getProxyPassword() {
+        return proxyPassword;
+    }
+
+    public void setProxyPassword(String proxyPassword) {
+        this.proxyPassword = proxyPassword;
+    }
 
     @JsonProperty
     public String getSessionAuthURL() {

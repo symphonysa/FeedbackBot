@@ -23,20 +23,30 @@ public class SymphonyAuth {
 
         symClient = SymphonyClientFactory.getClient(SymphonyClientFactory.TYPE.V4);
 
-
+        AuthenticationClient authClient;
 //        //Proxy config example
-//        ClientConfig proxyClientConfig = new ClientConfig();
-//        proxyClientConfig.connectorProvider(new ApacheConnectorProvider());
-//        proxyClientConfig.property(ClientProperties.PROXY_URI, "https://wwwproxy:8080");  //Or change to http..etc.
-//        proxyClientConfig.property(ClientProperties.PROXY_USERNAME, "username");
-//        proxyClientConfig.property(ClientProperties.PROXY_PASSWORD, "pass");
-//        Client proxyHttpClient = CustomHttpClient.getClient(config.getBotCertPath(),config.getBotCertPassword(),config.getLocalKeystorePath(),config.getLocalKeystorePassword(),proxyClientConfig);
-//
-//        Client localHttpClient = CustomHttpClient.getClient(config.getBotCertPath(),config.getBotCertPassword(),config.getLocalKeystorePath(),config.getLocalKeystorePassword());
+        if(config.getProxyURL() != null){
+            ClientConfig proxyClientConfig = new ClientConfig();
+            proxyClientConfig.connectorProvider(new ApacheConnectorProvider());
+            proxyClientConfig.property(ClientProperties.PROXY_URI, config.getProxyURL());
+            if(config.getProxyUsername() !=null){
+                proxyClientConfig.property(ClientProperties.PROXY_USERNAME, config.getProxyUsername());
+                proxyClientConfig.property(ClientProperties.PROXY_PASSWORD, config.getProxyPassword());
+            }
+            Client proxyHttpClient = CustomHttpClient.getClient(config.getBotCertPath(),config.getBotCertPassword(),config.getLocalKeystorePath(),config.getLocalKeystorePassword(),proxyClientConfig);
 
-        //AuthenticationClient authClient = new AuthenticationClient(config.getSessionAuthURL(), config.getKeyAuthUrl(),proxyHttpClient,localHttpClient);
+            Client localHttpClient = CustomHttpClient.getClient(config.getBotCertPath(),config.getBotCertPassword(),config.getLocalKeystorePath(),config.getLocalKeystorePassword());
 
-        AuthenticationClient authClient = new AuthenticationClient(config.getSessionAuthURL(), config.getKeyAuthUrl());
+            authClient = new AuthenticationClient(config.getSessionAuthURL(), config.getKeyAuthUrl(),proxyHttpClient,localHttpClient);
+            symClient.setAgentHttpClient(localHttpClient);
+            symClient.setPodHttpClient(proxyHttpClient);
+        }
+        else{
+            authClient = new AuthenticationClient(config.getSessionAuthURL(), config.getKeyAuthUrl());
+
+        }
+
+
 
 
         //Set the local keystores that hold the server CA and client certificates
@@ -50,8 +60,7 @@ public class SymphonyAuth {
 
 
         //Set agent and pod clients if custom are needed
-//        symClient.setAgentHttpClient(localHttpClient);
-//        symClient.setPodHttpClient(proxyHttpClient);
+
 
         SymphonyClientConfig symphonyClientConfig = new SymphonyClientConfig(false);
         symphonyClientConfig.set(SymphonyClientConfigID.AGENT_URL, config.getAgentAPIEndpoint());
