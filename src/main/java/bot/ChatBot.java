@@ -1,6 +1,10 @@
 package bot;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import config.BotConfig;
+import mongo.MongoDBClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.symphonyoss.client.SymphonyClient;
@@ -10,6 +14,7 @@ import org.symphonyoss.client.model.Chat;
 import org.symphonyoss.client.services.*;
 import org.symphonyoss.symphony.clients.model.SymMessage;
 import org.symphonyoss.symphony.clients.model.SymUser;
+import org.symphonyoss.symphony.pod.model.Stream;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -20,6 +25,7 @@ public class ChatBot implements ChatListener, ChatServiceListener {
     private final Logger logger = LoggerFactory.getLogger(ChatBot.class);
     private SymphonyClient symClient;
     private BotConfig config;
+    private MongoDBClient mongoDBClient;
 
 
     protected ChatBot(SymphonyClient symClient, BotConfig config) {
@@ -41,23 +47,7 @@ public class ChatBot implements ChatListener, ChatServiceListener {
 
 
         symClient.getChatService().addListener(this);
-
-        Chat chat = new Chat();
-        chat.setLocalUser(symClient.getLocalUser());
-        Set<SymUser> recipients = new HashSet<>();
-        try {
-            SymUser recipient = symClient.getUsersClient().getUserFromEmail(config.getUserEmailAddress());
-            recipients.add(recipient);
-            chat.setRemoteUsers(recipients);
-            symClient.getChatService().addChat(chat);
-            SymMessage reporterMessage = new SymMessage();
-            reporterMessage.setMessageText("Test message");
-            symClient.getMessagesClient().sendMessage(chat.getStream(), reporterMessage);
-        } catch (UsersClientException e) {
-            logger.error("Failed to find user", e);
-        }catch (MessagesException e) {
-            logger.error("Failed to send message", e);
-        }
+        mongoDBClient = new MongoDBClient(config.getMongoURL());
 
     }
 
@@ -70,21 +60,35 @@ public class ChatBot implements ChatListener, ChatServiceListener {
                 message.getFromUserId(),
                 message.getMessage(),
                 message.getMessageType());
-        SymMessage message2;
 
-        if (message.getMessageText().toLowerCase().contains("test")) {
+        Stream stream = new Stream();
+        stream.setId(mongoDBClient.getSectorRoom("admin").getStreamId());
 
 
-            message2 = new SymMessage();
-
-            message2.setMessage("<messageML><div><b><i>Message Received.</i></b></div></messageML>");
             try {
-                symClient.getMessagesClient().sendMessage(message.getStream(), message2);
+                String presentationML = message.getMessage();
+                int endoftag = presentationML.indexOf(">");
+                String start = presentationML.substring(0, endoftag + 1);
+                String resultmessage = start.concat(" Feedback from <span class=\"entity\" data-entity-id=\"mentionAdded\">@" + message.getSymUser().getDisplayName() + "</span>: <br/> ");
+                String end = presentationML.substring(endoftag + 1, presentationML.length());
+                resultmessage = resultmessage.concat(end);
+                String data = message.getEntityData();
+                JsonParser jsonParser = new JsonParser();
+                JsonElement json = jsonParser.parse(data);
+                JsonObject object = json.getAsJsonObject();
+                JsonObject mentionValue = jsonParser.parse("{\"type\":\"com.symphony.user.mention\",\"version\":\"1.0\",\"id\":[{\"type\":\"com.symphony.user.userId\",\"value\":\"" + message.getSymUser().getId() + "\"}]}").getAsJsonObject();
+                object.add("mentionAdded", mentionValue);
+                String resultdata = object.toString();
+
+
+                SymMessage researchmessage = new SymMessage();
+                researchmessage.setMessage(resultmessage);
+                researchmessage.setEntityData(resultdata);
+
+                symClient.getMessagesClient().sendMessage(stream, researchmessage);
             } catch (MessagesException e) {
                 logger.error("Failed to send message", e);
             }
-
-        }
 
 
 

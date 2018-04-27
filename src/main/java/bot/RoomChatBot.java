@@ -1,16 +1,28 @@
 package bot;
 
 import config.BotConfig;
+import model.SectorRoom;
+import mongo.MongoDBClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.symphonyoss.client.SymphonyClient;
 import org.symphonyoss.client.events.*;
 import org.symphonyoss.client.exceptions.MessagesException;
+import org.symphonyoss.client.exceptions.SymException;
+import org.symphonyoss.client.exceptions.UsersClientException;
+import org.symphonyoss.client.model.Chat;
 import org.symphonyoss.client.model.Room;
 import org.symphonyoss.client.services.RoomEventListener;
 import org.symphonyoss.client.services.RoomService;
 import org.symphonyoss.client.services.RoomServiceEventListener;
 import org.symphonyoss.symphony.clients.model.SymMessage;
+import org.symphonyoss.symphony.clients.model.SymUser;
+import org.symphonyoss.symphony.pod.model.MemberInfo;
+import org.symphonyoss.symphony.pod.model.MembershipList;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class RoomChatBot implements RoomServiceEventListener, RoomEventListener {
 
@@ -19,7 +31,7 @@ public class RoomChatBot implements RoomServiceEventListener, RoomEventListener 
     private SymphonyClient symClient;
     private RoomService roomService;
     private BotConfig config;
-
+    private MongoDBClient mongoDBClient;
 
     protected RoomChatBot(SymphonyClient symClient, BotConfig config) {
         this.symClient=symClient;
@@ -40,35 +52,14 @@ public class RoomChatBot implements RoomServiceEventListener, RoomEventListener 
 
         roomService = symClient.getRoomService();
         roomService.addRoomServiceEventListener(this);
-
+        mongoDBClient = new MongoDBClient(config.getMongoURL());
 
     }
 
     @Override
     public void onRoomMessage(SymMessage message) {
 
-        if (message == null)
-            return;
-        logger.debug("TS: {}\nFrom ID: {}\nSymMessage: {}\nSymMessage Type: {}",
-                message.getTimestamp(),
-                message.getFromUserId(),
-                message.getMessage(),
-                message.getMessageType());
-        SymMessage message2;
 
-        if (message.getMessageText().toLowerCase().contains("test")) {
-
-
-            message2 = new SymMessage();
-
-            message2.setMessage("<messageML><div><b><i>Message Received.</i></b></div></messageML>");
-            try {
-                symClient.getMessagesClient().sendMessage(message.getStream(), message2);
-            } catch (MessagesException e) {
-                logger.error("Failed to send message", e);
-            }
-
-        }
     }
 
     @Override
@@ -77,8 +68,50 @@ public class RoomChatBot implements RoomServiceEventListener, RoomEventListener 
     }
 
     @Override
-    public void onMessage(SymMessage symMessage) {
+    public void onMessage(SymMessage message) {
+        if (message == null)
+            return;
+        logger.debug("TS: {}\nFrom ID: {}\nSymMessage: {}\nSymMessage Type: {}",
+                message.getTimestamp(),
+                message.getFromUserId(),
+                message.getMessage(),
+                message.getMessageType());
+        SymMessage message2;
+        String streamId = mongoDBClient.getSectorRoom("admin").getStreamId();
+        if (message.getStream().getStreamId().equals(streamId) && message.getMessageText().toLowerCase().contains("feedbackrequest")) {
 
+
+            message2 = new SymMessage();
+
+            message2.setMessage("<messageML><div><b><i>Feedback request</i></b><br/>"+message.getMessageText()+"</div></messageML>");
+            message2.setEntityData(message.getEntityData());
+            List<SectorRoom> sectorRoomList = mongoDBClient.getAllSectorRooms();
+
+            for (SectorRoom sectorRoom: sectorRoomList) {
+                if(!sectorRoom.getSector().equals("admin")){
+                    MembershipList memberList;
+                    try {
+                        memberList = symClient.getRoomMembershipClient().getRoomMembership(message.getStreamId());
+                        for (MemberInfo user : memberList) {
+                            SymUser roomMember = symClient.getUsersClient().getUserFromId(user.getId());
+                            if(!roomMember.getEmailAddress().equals(config.getBotEmailAddress())){
+                            Chat chat = new Chat();
+                            chat.setLocalUser(symClient.getLocalUser());
+                            Set<SymUser> recipients = new HashSet<>();
+                            recipients.add(roomMember);
+                            chat.setRemoteUsers(recipients);
+                            symClient.getChatService().addChat(chat);
+                            symClient.getMessagesClient().sendMessage(chat.getStream(), message2);
+                            }
+                        }
+                    } catch (SymException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+
+        }
     }
 
     @Override

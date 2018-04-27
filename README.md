@@ -1,5 +1,7 @@
-# ChatBotSample
-Simple java Symphony bot using the Symphony OSF Java Client
+# Feedback Bot
+Leverage this bot framework to enable your teams to:
+Automatically distribute feedback requests to relevant, selected contacts in a timely manner
+Receive, consolidate, and log all client feedback in one secure chat room for all teams to read
 
 Set the src/main/resources/sample-config.yml to look like this
 
@@ -13,11 +15,6 @@ Set the src/main/resources/sample-config.yml to look like this
     agentAPIEndpoint: https://your-agent.symphony.com/agent
     podAPIEndpoint: https://your-pod.symphony.com/pod
     userEmailAddress: your-email@company.com
+    mongoURL: url to your mongo database
 
 Run BotMainApp.java
-
-Existing functionality is listening to the string "test" in messages that are sent to conversations that the Bot is included in and respond with "Message received".
-
-To expand functionality edit ChatBot.java for actions related to IM and MIMs and RoomChatBot.java for actions triggered by events in a room. 
-
-If you are developing a bot that lives within an enterprise pod with on-premise components (KM and Agent), un-comment the relevant code in SymphonyAuth.java to use custom HTTP clients that allow for proxy settings.

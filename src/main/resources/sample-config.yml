@@ -6,4 +6,6 @@ botCertPath:
 botCertPassword:
 botEmailAddress:
 agentAPIEndpoint: 
-podAPIEndpoint: 
+podAPIEndpoint:
+userEmailAddress:
+mongoURL:
